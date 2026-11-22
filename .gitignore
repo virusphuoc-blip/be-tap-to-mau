@@ -25,3 +25,7 @@ dist-ssr
 
 shots
 .vercel
+*-debug.log
+.env
+.env.*
+!.env.example

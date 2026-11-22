@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react'
 import { canShareFiles, downloadBlob, fileName, shareBlob, toPngBlob, toThumb } from '../lib/exportImage'
 import type { Op } from '../lib/paint'
 import { type Kind, addWork } from '../lib/storage'
-import { Confetti, Header, IconButton, Palette } from './ui'
+import { Confetti, Copyright, Header, IconButton, Palette } from './ui'
 
 export type Tool = 'fill' | 'brush' | 'eraser'
 export type Brush = { tool: Tool; color: string; size: 0 | 1 | 2 }
@@ -92,6 +92,7 @@ export function EditorShell(p: Props) {
         </div>
       </div>
       <Palette color={color} onPick={(c) => p.setBrush({ ...p.brush, color: c, tool: tool === 'eraser' ? 'fill' : tool })} />
+      <Copyright />
       <Confetti shot={p.party} />
     </div>
   )

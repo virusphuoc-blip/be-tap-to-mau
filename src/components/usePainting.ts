@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type Op, fillsOf, isComplete, push, undo as undoOps } from '../lib/paint'
 import { cheer } from '../lib/sound'
 import { type Kind, loadOps, saveOps } from '../lib/storage'
+import { count } from '../online/stats'
 
 /** Drawing state of one picture / statue: operation list, undo, auto-save and the "finished" celebration. */
 export function usePainting(kind: Kind, id: string, requiredIds: readonly string[]) {
@@ -20,7 +21,21 @@ export function usePainting(kind: Kind, id: string, requiredIds: readonly string
     wasComplete.current = complete
   }, [complete])
 
-  const add = useCallback((...next: Op[]) => setOps((cur) => next.reduce(push, cur)), [])
+  // anonymous statistics: a 2D picture counts when opened, a 3D statue when it is first painted
+  const counted = useRef(false)
+  useEffect(() => {
+    if (kind === '2d') count('pic2d')
+  }, [kind, id])
+  const add = useCallback(
+    (...next: Op[]) => {
+      if (kind === '3d' && !counted.current) {
+        counted.current = true
+        count('statue3d')
+      }
+      setOps((cur) => next.reduce(push, cur))
+    },
+    [kind],
+  )
   const undo = useCallback(() => setOps(undoOps), [])
   return { ops, fills, complete, party, add, undo }
 }

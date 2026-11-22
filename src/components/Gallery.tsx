@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { canShareFiles, downloadBlob, fileName, shareBlob, toPngBlob } from '../lib/exportImage'
 import { type Work, loadGallery, removeWork } from '../lib/storage'
-import { Header, IconButton } from './ui'
+import { Copyright, Header, IconButton } from './ui'
 
 export default function Gallery({ onBack }: { onBack: () => void }) {
   const [works, setWorks] = useState<Work[]>(loadGallery)
@@ -31,11 +31,13 @@ export default function Gallery({ onBack }: { onBack: () => void }) {
             }}
           />
         </div>
+        <div className="flex-1" />
+        <Copyright />
       </div>
     )
 
   return (
-    <div className="sky min-h-dvh pb-6">
+    <div className="sky flex min-h-dvh flex-col">
       <Header title="Tranh của bé" onBack={onBack} />
       {works.length === 0 ? (
         <div className="flex flex-col items-center gap-2 p-10 text-center">
@@ -64,6 +66,8 @@ export default function Gallery({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       )}
+      <div className="flex-1" />
+      <Copyright />
     </div>
   )
 }

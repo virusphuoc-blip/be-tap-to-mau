@@ -22,6 +22,10 @@ function write(key: string, value: unknown): boolean {
   }
 }
 
+/** Saved state of the games (board positions, best times...). */
+export const loadState = <T,>(key: string, fallback: T): T => read(key, fallback)
+export const saveState = (key: string, value: unknown) => void write(key, value)
+
 export type Kind = '2d' | '3d'
 
 export function loadOps(kind: Kind, id: string): Op[] {

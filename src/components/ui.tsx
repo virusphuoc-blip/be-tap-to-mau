@@ -71,3 +71,12 @@ export function Confetti({ shot }: { shot: number }) {
     </div>
   )
 }
+
+/** Copyright line shown at the bottom of every screen. */
+export function Copyright() {
+  return (
+    <p data-copyright className="shrink-0 px-2 py-1 text-center text-[11px] leading-tight text-slate-500">
+      © 2026 VH Phước. Mọi nội dung thuộc về VH Phước.
+    </p>
+  )
+}
