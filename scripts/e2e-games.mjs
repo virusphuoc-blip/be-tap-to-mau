@@ -6,11 +6,13 @@ import { chromium } from 'playwright-core'
 import { mkdirSync } from 'node:fs'
 
 const BASE = process.env.BASE ?? 'http://localhost:4173'
-const ONLINE = process.env.ONLINE === '1'
+const LIVE = process.env.LIVE_DB // real database URL: BASE is the deployed site with the rules published
+const ONLINE = process.env.ONLINE === '1' || Boolean(LIVE)
 const SLOW = Number(process.env.SLOW ?? 4) // CPU slow-down factor used to time the computer player
 const OUT = process.argv[2] ?? 'shots'
-const DB = 'http://127.0.0.1:9000'
-const NS = 'ns=demo-gau-truc-xanh-default-rtdb'
+const DB = LIVE ?? 'http://127.0.0.1:9000'
+const NS = LIVE ? '' : 'ns=demo-gau-truc-xanh-default-rtdb'
+const statWrites = new Map() // request id -> { keys, status } for every counter write seen on the wire
 const COPYRIGHT = '© 2026 VH Phước. Mọi nội dung thuộc về VH Phước.'
 mkdirSync(OUT, { recursive: true })
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/home/ubuntu/.local/bin/google-chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] })
@@ -20,6 +22,12 @@ async function phone() {
   const p = await ctx.newPage()
   p.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
   p.on('pageerror', (e) => errors.push(String(e)))
+  p.on('websocket', (ws) => {
+    const id = Math.random()
+    const frame = (f) => { try { return JSON.parse(typeof f.payload === 'string' ? f.payload : '') } catch { return null } }
+    ws.on('framesent', (f) => { const d = frame(f)?.d; if (d?.a === 'm' && String(d.b?.p).startsWith('/stats')) statWrites.set(id + ':' + d.r, { keys: Object.keys(d.b.d).filter((k) => k.startsWith('total/')).map((k) => k.slice(6)), status: 'sent' }) })
+    ws.on('framereceived', (f) => { const d = frame(f)?.d; const w = d && statWrites.get(id + ':' + d.r); if (w) w.status = d.b?.s })
+  })
   return p
 }
 const page = await phone()
@@ -281,7 +289,7 @@ if (ONLINE) {
     await shot(`v2-${g.id}-online-left`)
     await page.locator('[data-rematch]').click()
     await page.waitForSelector('[data-peer=wait]')
-    check(`${g.title} online: rematch resets the room and waits again`, (await rest(`rooms/${code}/moves`, owner)).body === '')
+    check(`${g.title} online: rematch resets the room and waits again`, (await rest(`rooms/${code}/moves`, LIVE ? undefined : owner)).body === '')
     await page.getByLabel('Rời phòng').click()
     await page.waitForSelector('[data-level]')
   }
@@ -292,6 +300,12 @@ if (ONLINE) {
   check('rules: counters cannot be deleted', (await rest('stats/total/visits', { method: 'DELETE' })).status === 401)
   check('rules: nothing else is writable', (await rest('other', { method: 'PUT', body: '1' })).status === 401 && (await rest('rooms/abc', { method: 'PUT', body: '{"game":"covua","created":1,"round":0,"moves":""}' })).status === 401)
   await page.waitForTimeout(1500)
+  const writes = [...statWrites.values()]
+  const okKeys = new Set(writes.filter((w) => w.status === 'ok').flatMap((w) => w.keys))
+  console.log('counter writes', writes.length, 'accepted', writes.filter((w) => w.status === 'ok').length, [...okKeys].sort().join())
+  check('stats: every counter write was accepted by the database', writes.length > 0 && writes.every((w) => w.status === 'ok'), JSON.stringify(writes.filter((w) => w.status !== 'ok').slice(0, 5)))
+  check('stats: writes seen for each kind of play', ['visits', 'pic2d', 'cotuong_cpu', 'covua_cpu', 'cotuong_local', 'covua_local', 'cotuong_online', 'covua_online', 'rooms_created', 'rubik_scramble', 'puzzle_start', 'puzzle_done'].every((k) => okKeys.has(k)), [...okKeys].sort().join())
+  if (!LIVE) {
   const stats = (await rest('stats', owner)).body
   const t = stats?.total ?? {}
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
@@ -315,6 +329,7 @@ if (ONLINE) {
   await page.getByText('Đăng xuất').click()
   await page.waitForSelector('[data-signin]')
   check('admin: signing out hides the statistics', (await page.locator('[data-stat]').count()) === 0)
+  }
 }
 
 const real = errors.filter((e) => !/GL Driver Message|GPU stall/.test(e))
