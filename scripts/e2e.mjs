@@ -22,6 +22,7 @@ check('no horizontal overflow at 390px', await page.evaluate(() => document.docu
 
 // ---- 2D: every picture loads ----
 await page.getByText('Tô tranh').click()
+await page.waitForSelector('[role=tab]')
 let total = 0
 const tabs = await page.getByRole('tab').count()
 for (let i = 0; i < tabs; i++) {
